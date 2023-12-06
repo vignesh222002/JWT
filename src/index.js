@@ -10,33 +10,38 @@ app.use(express.json());
 
 const posts = [
     {
-        username: "vignesh",
-        title: "post 1",
+        name: "vignesh",
+        title: "title 1"
     },
     {
-        username: "viki",
-        title: "post 2",
+        name: "viki",
+        title: "title 2"
     },
 ]
 
-app.get('/posts', authenticateToken, (request, response) => {
-    response.json(posts.filter(user => user.username == request.user.name))
-})
-
 app.post('/login', (request, response) => {
     const user = { name: request.body.username }
-    const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN)
-    response.json({ status: true, token: accessToken })
+    const accessToken = generateAccessToken(user)
+    const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN)
+    response.json({ status: true, token: accessToken, refreshToken })
 })
+
+app.get('/posts', authenticateToken, (request, response) => {
+    response.json(posts.filter(user => user.name == request.user.name));
+})
+
+function generateAccessToken(user) {
+    return jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1d' })
+}
 
 function authenticateToken(request, response, next) {
     const authHeader = request.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) response.status(401);
+    if (token == null) response.status(401).send({ status: false, message: "Token Invalid" });
     else {
         jwt.verify(token, process.env.ACCESS_TOKEN, (err, result) => {
-            if (err) response.status(403);
+            if (err) response.status(403).send({ status: false, message: "Token Expired" });
             else {
                 request.user = result // Set request manualy
                 next()
@@ -45,4 +50,4 @@ function authenticateToken(request, response, next) {
     }
 }
 
-app.listen(4000);
+app.listen(3000);
